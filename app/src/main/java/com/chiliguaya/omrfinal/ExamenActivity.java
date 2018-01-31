@@ -170,13 +170,14 @@ public class ExamenActivity extends AppCompatActivity implements CameraBridgeVie
         //A procesar los contornos para encontrar los cuadritos
         contadorMarca = 0; //cuenta las 3 marcas tipo QR
         marcaOrientacion = 0; //cuenta la marca especial con triangulito
+        int[] contornosMarcas = new int[contours.size()];
         for (int i = 0; i < contours.size(); i++) {
             area = Imgproc.contourArea(contours.get(i));
             contours.get(i).convertTo(contorno2f, CV_32FC2);
             perimetro = Imgproc.arcLength(contorno2f, true);
             fCContorno = 4 * Math.PI * area / Math.pow(perimetro, 2); //factor circularidad contorno actual
-            double fCContornoPadre = fCContorno;
-
+            double perimetroPadre = perimetro;
+            double areaPadre = area;
             //Confimo si el contorno es un cuadrado, para filtrar ruidos
             if (fCContorno >= FC_CUADRADO * 0.8 && fCContorno <= FC_CUADRADO * 1.2 && area >= areaEficaz * 0.0005) {
                 //en este punto ya tengo puros contornos de los cuadros, el problema es que tengo varios interno , externos,
@@ -210,12 +211,13 @@ public class ExamenActivity extends AppCompatActivity implements CameraBridgeVie
                                     perimetro = Imgproc.arcLength(contorno2f, true);
                                     area = Imgproc.contourArea(contours.get(contornoHijo));
                                     fCContorno = 4 * Math.PI * area / Math.pow(perimetro, 2); //factor circularidad contorno actual
-                                    if(fCContorno<0.8 &&marcaOrientacion ==0) {
+                                    if((perimetroPadre - perimetro) > 100 &&marcaOrientacion ==0) {
                                         Imgproc.fillPoly(mRgba, contornoHijo2, new Scalar(0, 255, 0));
                                         xD = (int) (mu.get_m10() / mu.get_m00());
                                         yD = (int) (mu.get_m01() / mu.get_m00());
                                         Imgproc.putText(mRgba, "p" + perimetro, new Point(xD,yD), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
-
+                                        Imgproc.putText(mRgba, "apadre" + areaPadre, new Point(xD,yD+50), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
+                                        Imgproc.putText(mRgba, "area" + area, new Point(xD,yD+100), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
                                         marcaOrientacion++;
                                     }
                                     else {
@@ -224,6 +226,8 @@ public class ExamenActivity extends AppCompatActivity implements CameraBridgeVie
                                             xA = (int) (mu.get_m10() / mu.get_m00());
                                             yA = (int) (mu.get_m01() / mu.get_m00());
                                             Imgproc.putText(mRgba, "p" + perimetro, new Point(xA,yA), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
+                                            Imgproc.putText(mRgba, "apadre" + areaPadre, new Point(xA,yA+50), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
+                                            Imgproc.putText(mRgba, "area" + area, new Point(xA,yA+100), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
 
                                             //Imgproc.putText(mRgba, "A", new Point(xA + 20, yA), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
                                         } else if (contadorMarca == 1) {
@@ -231,6 +235,8 @@ public class ExamenActivity extends AppCompatActivity implements CameraBridgeVie
                                             xB = (int) (mu.get_m10() / mu.get_m00());
                                             yB = (int) (mu.get_m01() / mu.get_m00());
                                             Imgproc.putText(mRgba, "p" + perimetro, new Point(xB,yB), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
+                                            Imgproc.putText(mRgba, "apadre" + areaPadre, new Point(xB,yB+50), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
+                                            Imgproc.putText(mRgba, "area" + area, new Point(xB,yB+100), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
 
                                             //Imgproc.putText(mRgba, "B", new Point(xB + 20, yB), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
                                         } else if (contadorMarca == 2) {
@@ -238,6 +244,8 @@ public class ExamenActivity extends AppCompatActivity implements CameraBridgeVie
                                             xC = (int) (mu.get_m10() / mu.get_m00());
                                             yC = (int) (mu.get_m01() / mu.get_m00());
                                             Imgproc.putText(mRgba, "p" + perimetro, new Point(xC,yC), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
+                                            Imgproc.putText(mRgba, "apadre" + areaPadre, new Point(xC,yC  +50), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
+                                            Imgproc.putText(mRgba, "area" + area, new Point(xC,yC+100), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
 
                                             //Imgproc.putText(mRgba, "C", new Point(xC + 20, yC), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
                                         }
@@ -249,7 +257,6 @@ public class ExamenActivity extends AppCompatActivity implements CameraBridgeVie
                                         }
                                     }
                                 }
-
                             }
                         }
                     }
