@@ -245,7 +245,7 @@ public class ExamenActivity extends AppCompatActivity implements CameraBridgeVie
 //                                        Imgproc.putText(mRgba, "p" + perimetro, new Point(xD,yD), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
 //                                        Imgproc.putText(mRgba, "apadre" + areaPadre, new Point(xD,yD+50), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
 //                                        Imgproc.putText(mRgba, "area" + area, new Point(xD,yD+100), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
-                                        marcaOrientacion++;
+                                        marcaOrientacion++; //
                                     }
                                     if(area>(areaPadre*0.11)){ //sujeto a cambios
                                         if (contadorMarca == 0) {
