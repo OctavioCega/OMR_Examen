@@ -29,7 +29,9 @@ import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.imgproc.Moments;
+import org.opencv.utils.Converters;
 
+import static org.opencv.core.CvType.CV_32F;
 import static org.opencv.imgproc.Imgproc.moments;
 
 import java.util.ArrayList;
@@ -120,6 +122,18 @@ public class ExamenActivity extends AppCompatActivity implements CameraBridgeVie
         element1 = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(2, 2));
         areaEficaz = width * height;
         tiempoInicio = System.currentTimeMillis();
+
+        transformada = new Mat(new Size(3,3),CV_32F);
+        aux1 = new Mat();
+        aux2 = new Mat();
+        verticesMat = new Mat();
+        puntosGet = new Mat();
+        puntosDest = new Mat();
+        marcas = new ArrayList<>();
+        for (int i = 0; i < 4; i++) {
+            marcas.add(new Point(0, 0));
+        }
+        mRgba2 = new Mat();
     }
 
     @Override
@@ -146,17 +160,29 @@ public class ExamenActivity extends AppCompatActivity implements CameraBridgeVie
     double area;
     double perimetro;
     double fCContorno;
+    boolean escaneo = false;
+    double startTime;
     //https://en.wikipedia.org/wiki/Shape_factor_(image_analysis_and_microscopy)
     //https://stackoverflow.com/questions/45744567/opencv-hierarchy-is-always-null
     final double FC_CUADRADO = 4 * Math.PI / 16; //factor circularidad cuadrado
     final double FC_CIRCULO = 1;
 
     // debe ser igual a 0.7853981633974483 para un cuadrado perfecto
+
+    //para trnasformar
+    Mat puntosGet;
+    Mat puntosDest;
+    Mat transformada;
+    Mat crop;
+    Mat aux1;
+    Mat aux2;
+    ArrayList<Point> marcas;
+    Mat mRgba2;
     @Override
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
         mRgba = inputFrame.rgba();
         mGray = inputFrame.gray();
-
+        inputFrame.rgba().copyTo(mRgba2);
 //        tiempoActual = System.currentTimeMillis();
 //        if ((tiempoActual - tiempoInicio) < 40) {
         Imgproc.GaussianBlur(mGray, mProceso, new Size(5, 5), 3);
@@ -211,41 +237,42 @@ public class ExamenActivity extends AppCompatActivity implements CameraBridgeVie
                                     perimetro = Imgproc.arcLength(contorno2f, true);
                                     area = Imgproc.contourArea(contours.get(contornoHijo));
                                     fCContorno = 4 * Math.PI * area / Math.pow(perimetro, 2); //factor circularidad contorno actual
-                                    if((perimetroPadre - perimetro) > 100 &&marcaOrientacion ==0) {
+                                    if(area<(areaPadre*0.08)  &&marcaOrientacion ==0) {
                                         Imgproc.fillPoly(mRgba, contornoHijo2, new Scalar(0, 255, 0));
                                         xD = (int) (mu.get_m10() / mu.get_m00());
                                         yD = (int) (mu.get_m01() / mu.get_m00());
-                                        Imgproc.putText(mRgba, "p" + perimetro, new Point(xD,yD), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
-                                        Imgproc.putText(mRgba, "apadre" + areaPadre, new Point(xD,yD+50), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
-                                        Imgproc.putText(mRgba, "area" + area, new Point(xD,yD+100), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
+                                        marcaBR = i;
+//                                        Imgproc.putText(mRgba, "p" + perimetro, new Point(xD,yD), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
+//                                        Imgproc.putText(mRgba, "apadre" + areaPadre, new Point(xD,yD+50), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
+//                                        Imgproc.putText(mRgba, "area" + area, new Point(xD,yD+100), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
                                         marcaOrientacion++;
                                     }
-                                    else {
+                                    if(area>(areaPadre*0.11)){ //sujeto a cambios
                                         if (contadorMarca == 0) {
                                             marcaA = i;
                                             xA = (int) (mu.get_m10() / mu.get_m00());
                                             yA = (int) (mu.get_m01() / mu.get_m00());
-                                            Imgproc.putText(mRgba, "p" + perimetro, new Point(xA,yA), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
-                                            Imgproc.putText(mRgba, "apadre" + areaPadre, new Point(xA,yA+50), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
-                                            Imgproc.putText(mRgba, "area" + area, new Point(xA,yA+100), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
+//                                            Imgproc.putText(mRgba, "p" + perimetro, new Point(xA,yA), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
+//                                            Imgproc.putText(mRgba, "apadre" + areaPadre, new Point(xA,yA+50), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
+//                                            Imgproc.putText(mRgba, "area" + area, new Point(xA,yA+100), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
 
                                             //Imgproc.putText(mRgba, "A", new Point(xA + 20, yA), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
                                         } else if (contadorMarca == 1) {
                                             marcaB = i;
                                             xB = (int) (mu.get_m10() / mu.get_m00());
                                             yB = (int) (mu.get_m01() / mu.get_m00());
-                                            Imgproc.putText(mRgba, "p" + perimetro, new Point(xB,yB), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
-                                            Imgproc.putText(mRgba, "apadre" + areaPadre, new Point(xB,yB+50), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
-                                            Imgproc.putText(mRgba, "area" + area, new Point(xB,yB+100), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
+//                                            Imgproc.putText(mRgba, "p" + perimetro, new Point(xB,yB), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
+//                                            Imgproc.putText(mRgba, "apadre" + areaPadre, new Point(xB,yB+50), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
+//                                            Imgproc.putText(mRgba, "area" + area, new Point(xB,yB+100), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
 
                                             //Imgproc.putText(mRgba, "B", new Point(xB + 20, yB), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
                                         } else if (contadorMarca == 2) {
                                             marcaC = i;
                                             xC = (int) (mu.get_m10() / mu.get_m00());
                                             yC = (int) (mu.get_m01() / mu.get_m00());
-                                            Imgproc.putText(mRgba, "p" + perimetro, new Point(xC,yC), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
-                                            Imgproc.putText(mRgba, "apadre" + areaPadre, new Point(xC,yC  +50), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
-                                            Imgproc.putText(mRgba, "area" + area, new Point(xC,yC+100), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
+//                                            Imgproc.putText(mRgba, "p" + perimetro, new Point(xC,yC), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
+//                                            Imgproc.putText(mRgba, "apadre" + areaPadre, new Point(xC,yC  +50), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
+//                                            Imgproc.putText(mRgba, "area" + area, new Point(xC,yC+100), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
 
                                             //Imgproc.putText(mRgba, "C", new Point(xC + 20, yC), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
                                         }
@@ -303,7 +330,6 @@ public class ExamenActivity extends AppCompatActivity implements CameraBridgeVie
             xA = (int) (mu.get_m10() / mu.get_m00());
             yA = (int) (mu.get_m01() / mu.get_m00());
             Imgproc.putText(mRgba, "TopIzq (A)", new Point(xA + 20, yA + 20), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
-            Imgproc.drawContours(mRgba, contours, marcaTL, new Scalar(0, 255, 0), 2);
             mu = moments(contours.get(marcaBL), true);
             xB = (int) (mu.get_m10() / mu.get_m00());
             yB = (int) (mu.get_m01() / mu.get_m00());
@@ -313,165 +339,56 @@ public class ExamenActivity extends AppCompatActivity implements CameraBridgeVie
             yC = (int) (mu.get_m01() / mu.get_m00());
             Imgproc.putText(mRgba, "TopDer (C)", new Point(xC + 20, yC + 20), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
 
-//            //A crear la linea, primero necesito las esquinas del contorno so usare approxpoly en los dos primero.
-//            int[] esquinasUtilesBL = {0,0};
-//            int[] esquinasUtilesTR = {0,0};
-//            double PORCENTAJE = max/10000;
-//            ArrayList<MatOfPoint> contornosAproximadosList = new ArrayList<>();
-//            for(int i = 0; i<2; i++){
-//                contornosAproximadosList.add(new MatOfPoint());
-//            }
-//            contours.get(marcaBL).convertTo(contorno2f, CV_32FC2);
-//            double perimetroBL = Imgproc.arcLength(contorno2f, true);
-//            Imgproc.approxPolyDP(contorno2f, contornosAproximados2f, perimetroBL*PORCENTAJE, true); //a partir de 5 ya detecta los lados YAY!!
-//            contornosAproximados2f.convertTo(contornoAproximado, CV_32S);
-//            contornosAproximadosList.add(0,contornoAproximado); //index 0 contornoBL
-//            contours.get(marcaTR).convertTo(contorno2f, CV_32FC2);
-//            verticesMat = contornosAproximadosList.get(0);
-//            Imgproc.putText(mRgba, "VBL " + verticesMat.rows(), new Point(600 , 50), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
-//            Imgproc.drawContours(mRgba, contornosAproximadosList, 0, new Scalar(255, 255, 0), 2);
-//            double[] distanciasEsquinasBR = new double[verticesMat.rows()];
-//            double[] esquina;
-//            for(int i = 0; i<verticesMat.rows();i++){
-//                esquina = verticesMat.get(i, 0);
-//                distanciasEsquinasBR[i] = Math.sqrt(Math.pow((esquina[0]- xA), 2) + Math.pow((esquina[1] - yA), 2));
-//            }
-//            //ya puedo saber cual esquina de la marca pertene a la basura, digo a la parte inferior del cuadrito :3 chido
-//            //tengo que descubrir cuales son
-//            double distMasLarga =  distanciasEsquinasBR[0];
-//            for(int i = 0;i<distanciasEsquinasBR.length;i++){
-//                if(distanciasEsquinasBR[i]>distMasLarga){
-//                    distMasLarga = distanciasEsquinasBR[i];
-//                }
-//            }
-//            //ya se cual debe ser la distancia más larga así que debo comparar nada más
-//            int j = 0;
-//            double[] esquinaNoRepetir = {0,0};
-//            double[] esquinaActual ={0,0};
-//            for(int i = 0;i<distanciasEsquinasBR.length;i++){
-//                if(distanciasEsquinasBR[i]>=distMasLarga-10){
-//                    esquinaActual = verticesMat.get(i,0);
-//                    if(j==0){
-//                        esquinasUtilesBL[0] = i;
-//                        esquinaNoRepetir = verticesMat.get(i,0);
-//                        j++;
-//                    }
-//                    else if(j==1 ){
-//                        esquinasUtilesBL[1] = i;
-//                        Log.d(TAG,"[0]BL EsquinaNORepetir " + "x" + esquinaNoRepetir[0] + " y" + esquinaNoRepetir[1]);
-//                        Log.d(TAG,"[1]BL Esquinaactual  " + "x" + esquinaActual[0] + " y" + esquinaActual[1]);
-//                        if(esquinaNoRepetir[0] ==esquinaActual[0] ||esquinaNoRepetir[1] ==esquinaActual[1] ){
-//                            Log.d(TAG,"CUIDADO");
-//
-//                        }
-//                        j++;
-//                    }
-//                }
-//            }
-//            double x1;
-//            double y1;
-//            double x2;
-//            double y2;
-//            //ya se cual esquina es cual y tengo las dos importantes vamos a dibujarlas
-//            double[] cornerBL = verticesMat.get(esquinasUtilesBL[0], 0);
-//            Imgproc.putText(mRgba, "0", new Point(cornerBL[0],cornerBL[1]), Core.FONT_ITALIC, 1, new Scalar(255, 0, 0), 3);
-//            x1 = cornerBL[0];
-//            y1 = cornerBL[1];
-//            cornerBL = verticesMat.get(esquinasUtilesBL[1], 0);
-//            Imgproc.putText(mRgba, "1", new Point(cornerBL[0],cornerBL[1]), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
-//            x2 = cornerBL[0];
-//            y2 = cornerBL[1];
-//            //ahora vamos con TR
-//            double perimetroTR = Imgproc.arcLength(contorno2f, true);
-//            Imgproc.approxPolyDP(contorno2f, contornosAproximados2f, perimetroTR*PORCENTAJE, true); //a partir de 5 ya detecta los lados YAY!!
-//            contornosAproximados2f.convertTo(contornoAproximado, CV_32S);
-//            contornosAproximadosList.add(1,contornoAproximado);
-//            verticesMat = contornosAproximadosList.get(1);
-//            Imgproc.putText(mRgba, "VTR " + verticesMat.rows(), new Point(600 , 100), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
-//            Imgproc.putText(mRgba, "e " + max, new Point(600 , 150), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
-//            Imgproc.drawContours(mRgba, contornosAproximadosList, 1, new Scalar(255, 255, 0), 2);
-//            double[] distanciasEsquinasTR = new double[verticesMat.rows()];
-//            for(int i = 0; i<verticesMat.rows();i++){
-//                esquina = verticesMat.get(i, 0);
-//                distanciasEsquinasTR[i] = Math.sqrt(Math.pow((esquina[0]- xA), 2) + Math.pow((esquina[1] - yA), 2));
-//            }
-//            //ya puedo saber cual esquina de la marca pertene a la basura, digo a la parte derecha del cuadrito :3 chido
-//            //tengo que descubrir cuales son
-//            distMasLarga =  distanciasEsquinasTR[0];
-//            for(int i = 0;i<distanciasEsquinasTR.length;i++){
-//                if(distanciasEsquinasTR[i]>distMasLarga){
-//                    distMasLarga = distanciasEsquinasTR[i];
-//                }
-//            }
-//            //ya se cual debe ser la distancia más larga así que debo comparar nada más
-//            j = 0;
-//            for(int i = 0;i<distanciasEsquinasTR.length;i++){
-//                esquinaActual = verticesMat.get(i,0);
-//                if(distanciasEsquinasTR[i]>=distMasLarga-10){
-//                    if(j==0){
-//                        esquinaNoRepetir = esquinaActual;
-//                        esquinasUtilesTR[0] = i;
-//                        j++;
-//                    }
-//                    else if(j==1 ){
-//                        esquinasUtilesTR[1] = i;
-//                        Log.d(TAG,"[0]TR EsquinaNORepetir " + "x" + esquinaNoRepetir[0] + " y" + esquinaNoRepetir[1]);
-//                        Log.d(TAG,"[1]TR Esquinaactual  " + "x" + esquinaActual[0] + " y" + esquinaActual[1]);
-//                        if(esquinaNoRepetir[0] ==esquinaActual[0] ||esquinaNoRepetir[1] ==esquinaActual[1] ){
-//                            Log.d(TAG,"CUIDADO TR");
-//
-//                        }
-//                        j++;
-//                    }
-//                }
-//            }
-//            //ya se cual esquina es cual y tengo las dos importantes vamos a dibujarlas
-//            double[] cornerTR = verticesMat.get(esquinasUtilesTR[0], 0);
-//            Imgproc.putText(mRgba, "0", new Point(cornerTR[0],cornerTR[1]), Core.FONT_ITALIC, 1, new Scalar(255, 0, 0), 3);
-//            double x3 = cornerTR[0];
-//            double y3 = cornerTR[1];
-//            cornerTR = verticesMat.get(esquinasUtilesTR[1], 0);
-//            Imgproc.putText(mRgba, "1", new Point(cornerTR[0],cornerTR[1]), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
-//            double x4 = cornerTR[0];
-//            double y4 = cornerTR[1];
-//            //Ya tengo las dos posibles coordenadas para lanzar la línea, vamo a darle pues
-//            //A calcular la interseccion de dos lineas con esta formula
-//            //https://en.wikipedia.org/wiki/Line%E2%80%93line_intersection //no funciono por algun motivo ...
-//            //considero aqui a cornerBL x1y1,x2y2 y cornerTR x3,y3,x4,
-//            double denominador = (x2-x1)*(y4-y3)-(x4-x3)*(y2-y1);
-//            double xD = (x2*y1-x1*y2)*(x4-x3)-(x2-x1)*(x4*y3-x3*y4);
-//            double yD = (x2*y1-x1*y2)*(y4-y3)-(y2-y1)*(x4*y4-x3*y4);
-//            if(denominador!=0) {
-//                xD = xD / denominador;
-//                yD =yD / denominador;
-//                if(xD>0 &&yD>0) {
-//                    Imgproc.line(mRgba, new Point(xD, yD), new Point(x1, y1), new Scalar(0, 255, 255), 2);
-//                    Imgproc.line(mRgba, new Point(xD, yD), new Point(x3, y3), new Scalar(0, 255, 255), 2);
-//                    Imgproc.putText(mRgba, "xD " + xD + " yD " + yD , new Point(xD,yD), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
-//
-//                }
-////                Log.d(TAG, "X1,Y1=" + x1+","+y1);
-////                Log.d(TAG, "X2,Y2=" + x2+","+y2);
-////                Log.d(TAG, "X3,Y3=" + x3+","+y3);
-////                Log.d(TAG, "X4,Y4=" + x4+","+y4);
-////                Log.d(TAG, "XD,YD=" + xD+","+yD);
-//
-//
-//            }
-//            else{
-////                Log.d(TAG,"Denominador zero :(");
-////                Log.d(TAG, "X1,Y1=" + x1+","+y1);
-////                Log.d(TAG, "X2,Y2=" + x2+","+y2);
-////                Log.d(TAG, "X3,Y3=" + x3+","+y3);
-////                Log.d(TAG, "X4,Y4=" + x4+","+y4);
-//            }
-            Imgproc.line(mRgba, new Point(xA, yA), new Point(xC, yC), new Scalar(255, 0, 0), 2);
-            Imgproc.line(mRgba, new Point(xB, yB), new Point(xD, yD), new Scalar(0, 255, 0), 2);
-            Imgproc.line(mRgba, new Point(xC, yC), new Point(xD, yD), new Scalar(0, 0, 255), 2);
-            Imgproc.line(mRgba, new Point(xA, yA), new Point(xB, yB), new Scalar(0, 255, 255), 2);
+            //pinto todas los vertices en un orden
+            ArrayList<MatOfPoint> contornoBL = new ArrayList<>();
+            contornoBL.add(contours.get(marcaBL)); //contorno aproximado
+            Imgproc.fillPoly(mRgba, contornoBL, new Scalar(255, 0, 0));
+            ArrayList<MatOfPoint> contornoTL = new ArrayList<>();
+            contornoTL.add(contours.get(marcaTL)); //contorno aproximado
+            Imgproc.fillPoly(mRgba, contornoTL, new Scalar(0, 255, 0));
+            ArrayList<MatOfPoint> contornoTR = new ArrayList<>();
+            contornoTR.add(contours.get(marcaTR)); //contorno aproximado
+            Imgproc.fillPoly(mRgba, contornoTR, new Scalar(0, 0, 255));
+            ArrayList<MatOfPoint> contornoBR = new ArrayList<>();
+            contornoBR.add(contours.get(marcaBR)); //contorno aproximado
+            Imgproc.fillPoly(mRgba, contornoBR, new Scalar(255, 255, 0));
+            Imgproc.line(mRgba, new Point(xA, yA), new Point(xC, yC), new Scalar(255, 0, 255), 5);
+            Imgproc.line(mRgba, new Point(xB, yB), new Point(xD, yD), new Scalar(255, 0, 255), 5);
+            Imgproc.line(mRgba, new Point(xC, yC), new Point(xD, yD), new Scalar(255, 0, 255), 5);
+            Imgproc.line(mRgba, new Point(xA, yA), new Point(xB, yB), new Scalar(255, 0, 255), 5);
+            marcas.set(0,new Point(xB,yB));
+            marcas.set(1,new Point(xA,yA));
+            marcas.set(2,new Point(xC,yC));
+            marcas.set(3,new Point(xD,yD));
+//           ahora puedo extraer el examen al fin
+            //calculo distancia entre las coordenadas orriginales del examen para poder trandformarla a escala
+            double dist1 = Math.sqrt(Math.pow((xC - xD), 2) + Math.pow((yC - yD), 2));
+            double dist2 = Math.sqrt(Math.pow((xD - xB), 2) + Math.pow((yD - yD), 2));
+            double dist3 = Math.sqrt(Math.pow((xC - xA), 2) + Math.pow((yC - yA), 2));
+            double dist4 = (dist2 + dist3) / 2;
+            double escala = mRgba.width() / dist1;
 
+            //Quiero que escanee solo cada 2.7 segundos, un delay (al final)
+            if (true) {
+                startTime = System.currentTimeMillis();
+                escaneo = true;
+                //ring.start(); //debo agregar opcion de sonido activado o no
+                //Log.d(TAG,"Encontre examen, trabajando... " + startTime);
+                ArrayList<Point> puntosDestino = new ArrayList();
+                //con esto obligo a que la imagen escale hasta lo mas largo y luego proporcionalmente lo ancho :D 2018-01-07
+                puntosDestino.add(new Point(0, mRgba.height())); // bot left ->0
+                puntosDestino.add(new Point(0, 0)); ///top left                 ->1
+                puntosDestino.add(new Point(mRgba.width(), 0)); //top right                                 ->2
+                puntosDestino.add(new Point(mRgba.width(), mRgba.height())); //bot right            ->3
+                puntosGet = Converters.vector_Point2d_to_Mat(marcas);
+                puntosDest = Converters.vector_Point2d_to_Mat(puntosDestino);
+                puntosGet.convertTo(aux1, CV_32F);
+                puntosDest.convertTo(aux2, CV_32F);
+                transformada = Imgproc.getPerspectiveTransform(aux1, aux2);
+                Imgproc.warpPerspective(mRgba, mRgba2 , transformada, mRgba.size());
+                return (mRgba2);
+            }
         }
-
 //        }
 //        else {
 //            if (tiempoActual - tiempoInicio > 950)
