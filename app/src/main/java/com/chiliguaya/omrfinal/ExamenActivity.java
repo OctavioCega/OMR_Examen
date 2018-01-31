@@ -143,6 +143,9 @@ public class ExamenActivity extends AppCompatActivity implements CameraBridgeVie
     int marcaA, marcaB, marcaC, contadorMarca, marcaD, marcaOrientacion = 0;
     int xA, xB, xC, yA, yB, yC, xD, yD;
     int marcaTR, marcaTL, marcaBL, marcaBR;//top right ,top lef, bot left
+    double area;
+    double perimetro;
+    double fCContorno;
     //https://en.wikipedia.org/wiki/Shape_factor_(image_analysis_and_microscopy)
     //https://stackoverflow.com/questions/45744567/opencv-hierarchy-is-always-null
     final double FC_CUADRADO = 4 * Math.PI / 16; //factor circularidad cuadrado
@@ -154,30 +157,28 @@ public class ExamenActivity extends AppCompatActivity implements CameraBridgeVie
         mRgba = inputFrame.rgba();
         mGray = inputFrame.gray();
 
-//        Imgproc.resize(mGray, mProceso, new Size(mGray.width(), mGray.height()));
 //        tiempoActual = System.currentTimeMillis();
 //        if ((tiempoActual - tiempoInicio) < 40) {
         Imgproc.GaussianBlur(mGray, mProceso, new Size(5, 5), 3);
-        //Imgproc.threshold(mProceso, mProceso, 0, 255, Imgproc.THRESH_OTSU);
         //Tratar de implementar en un futuro https://www.pyimagesearch.com/2015/04/06/zero-parameter-automatic-canny-edge-detection-with-python-and-opencv/
         //https://stackoverflow.com/questions/22390131/java-and-opencv-calculate-median-mean-stdev-value-of-mat-gray-image
         Imgproc.Canny(mProceso, mProceso, 120, 150, 3, false);
         Imgproc.dilate(mProceso, mProceso, element1);
-//        Imgproc.resize(mProceso, mProceso, new Size(mGray.width(), mGray.height()));
-
         Mat hierarchy = new Mat();
         ArrayList<MatOfPoint> contours = new ArrayList<>();
-        ArrayList<Moments> moments = new ArrayList<>();
         Imgproc.findContours(mProceso, contours, hierarchy, Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE);
         //A procesar los contornos para encontrar los cuadritos
-        contadorMarca = 0;
-        marcaOrientacion = 0;
+        contadorMarca = 0; //cuenta las 3 marcas tipo QR
+        marcaOrientacion = 0; //cuenta la marca especial con triangulito
         for (int i = 0; i < contours.size(); i++) {
-            double area = Imgproc.contourArea(contours.get(i));
+            area = Imgproc.contourArea(contours.get(i));
             contours.get(i).convertTo(contorno2f, CV_32FC2);
-            double perimetro = Imgproc.arcLength(contorno2f, true);
-            double fCContorno = 4 * Math.PI * area / Math.pow(perimetro, 2); //factor circularidad contorno actual
-            if (fCContorno >= FC_CUADRADO * 0.95 && fCContorno <= FC_CUADRADO * 1.2 && area >= areaEficaz * 0.001 && area <= areaEficaz * 0.008) {
+            perimetro = Imgproc.arcLength(contorno2f, true);
+            fCContorno = 4 * Math.PI * area / Math.pow(perimetro, 2); //factor circularidad contorno actual
+            double fCContornoPadre = fCContorno;
+
+            //Confimo si el contorno es un cuadrado, para filtrar ruidos
+            if (fCContorno >= FC_CUADRADO * 0.8 && fCContorno <= FC_CUADRADO * 1.2 && area >= areaEficaz * 0.0005) {
                 //en este punto ya tengo puros contornos de los cuadros, el problema es que tengo varios interno , externos,
                 //debo ahora decir que solo me interesan los que tienen chamacos pero no padre, intento 1
                 int[] jerarquia = new int[4]; //recuerda [next,previous,child,parent]
@@ -209,28 +210,35 @@ public class ExamenActivity extends AppCompatActivity implements CameraBridgeVie
                                     perimetro = Imgproc.arcLength(contorno2f, true);
                                     area = Imgproc.contourArea(contours.get(contornoHijo));
                                     fCContorno = 4 * Math.PI * area / Math.pow(perimetro, 2); //factor circularidad contorno actual
-                                    if(fCContorno<0.7 &&marcaOrientacion ==0) {
+                                    if(fCContorno<0.8 &&marcaOrientacion ==0) {
                                         Imgproc.fillPoly(mRgba, contornoHijo2, new Scalar(0, 255, 0));
-                                        Imgproc.putText(mRgba, "area " + area + "fcc" + fCContorno, new Point(600,399), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
                                         xD = (int) (mu.get_m10() / mu.get_m00());
                                         yD = (int) (mu.get_m01() / mu.get_m00());
+                                        Imgproc.putText(mRgba, "p" + perimetro, new Point(xD,yD), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
+
                                         marcaOrientacion++;
                                     }
-                                    else if(fCContorno>0.8){
+                                    else {
                                         if (contadorMarca == 0) {
                                             marcaA = i;
                                             xA = (int) (mu.get_m10() / mu.get_m00());
                                             yA = (int) (mu.get_m01() / mu.get_m00());
+                                            Imgproc.putText(mRgba, "p" + perimetro, new Point(xA,yA), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
+
                                             //Imgproc.putText(mRgba, "A", new Point(xA + 20, yA), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
                                         } else if (contadorMarca == 1) {
                                             marcaB = i;
                                             xB = (int) (mu.get_m10() / mu.get_m00());
                                             yB = (int) (mu.get_m01() / mu.get_m00());
+                                            Imgproc.putText(mRgba, "p" + perimetro, new Point(xB,yB), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
+
                                             //Imgproc.putText(mRgba, "B", new Point(xB + 20, yB), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
                                         } else if (contadorMarca == 2) {
                                             marcaC = i;
                                             xC = (int) (mu.get_m10() / mu.get_m00());
                                             yC = (int) (mu.get_m01() / mu.get_m00());
+                                            Imgproc.putText(mRgba, "p" + perimetro, new Point(xC,yC), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
+
                                             //Imgproc.putText(mRgba, "C", new Point(xC + 20, yC), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
                                         }
                                         contadorMarca++;
@@ -477,7 +485,7 @@ public class ExamenActivity extends AppCompatActivity implements CameraBridgeVie
                 mostrarConfig();
                 break;
             case R.id.flash:
-                if (flash == false) {
+                if (!flash) {
                     mOpenCvCameraView.setFlashOn(true);
                     flash = true;
                 } else {
@@ -492,14 +500,14 @@ public class ExamenActivity extends AppCompatActivity implements CameraBridgeVie
     public void mostrarConfig() {
         AlertDialog.Builder builder = new AlertDialog.Builder(ExamenActivity.this);
         View mView = getLayoutInflater().inflate(R.layout.dialog_config, null);
-        SeekBar seekbar1 = (SeekBar) mView.findViewById(R.id.seekBar);
-        SeekBar seekbar2 = (SeekBar) mView.findViewById(R.id.seekBar2);
+        SeekBar seekbar1 = mView.findViewById(R.id.seekBar);
+        SeekBar seekbar2 = mView.findViewById(R.id.seekBar2);
         seekbar2.setProgress((int) max);
-        final TextView textView = (TextView) mView.findViewById(R.id.textView2);
-        final TextView textView2 = (TextView) mView.findViewById(R.id.textView3);
+        final TextView textView =  mView.findViewById(R.id.textView2);
+        final TextView textView2 = mView.findViewById(R.id.textView3);
         textView2.setText("" + max);
-        final CheckBox checkBox = (CheckBox) mView.findViewById(R.id.checkBox);
-        Button button = (Button) mView.findViewById(R.id.button2);
+        final CheckBox checkBox = mView.findViewById(R.id.checkBox);
+        Button button = mView.findViewById(R.id.button2);
         builder.setView(mView);
         final AlertDialog dialog = builder.create();
         dialog.show();
