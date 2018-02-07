@@ -237,7 +237,7 @@ public class ExamenActivity extends AppCompatActivity implements CameraBridgeVie
                                     perimetro = Imgproc.arcLength(contorno2f, true);
                                     area = Imgproc.contourArea(contours.get(contornoHijo));
                                     fCContorno = 4 * Math.PI * area / Math.pow(perimetro, 2); //factor circularidad contorno actual
-                                    if(area<(areaPadre*0.08)  &&marcaOrientacion ==0) {
+                                    if(area<(areaPadre*0.08)  &&marcaOrientacion ==0 && contadorMarca ==3) {  //solo checar si todas las marcas fueron encontraas
                                         Imgproc.fillPoly(mRgba, contornoHijo2, new Scalar(0, 255, 0));
                                         xD = (int) (mu.get_m10() / mu.get_m00());
                                         yD = (int) (mu.get_m01() / mu.get_m00());
@@ -246,6 +246,8 @@ public class ExamenActivity extends AppCompatActivity implements CameraBridgeVie
 //                                        Imgproc.putText(mRgba, "apadre" + areaPadre, new Point(xD,yD+50), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
 //                                        Imgproc.putText(mRgba, "area" + area, new Point(xD,yD+100), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
                                         marcaOrientacion++; //
+                                        Imgproc.putText(mRgba, "D", new Point(xA - 100, yA), Core.FONT_ITALIC, 1, new Scalar(0, 255, 255), 3);
+
                                     }
                                     if(area>(areaPadre*0.11)){ //sujeto a cambios
                                         if (contadorMarca == 0) {
@@ -256,7 +258,7 @@ public class ExamenActivity extends AppCompatActivity implements CameraBridgeVie
 //                                            Imgproc.putText(mRgba, "apadre" + areaPadre, new Point(xA,yA+50), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
 //                                            Imgproc.putText(mRgba, "area" + area, new Point(xA,yA+100), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
 
-                                            //Imgproc.putText(mRgba, "A", new Point(xA + 20, yA), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
+                                            Imgproc.putText(mRgba, "A", new Point(xA - 100, yA), Core.FONT_ITALIC, 1, new Scalar(0, 255, 255), 3);
                                         } else if (contadorMarca == 1) {
                                             marcaB = i;
                                             xB = (int) (mu.get_m10() / mu.get_m00());
@@ -265,7 +267,7 @@ public class ExamenActivity extends AppCompatActivity implements CameraBridgeVie
 //                                            Imgproc.putText(mRgba, "apadre" + areaPadre, new Point(xB,yB+50), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
 //                                            Imgproc.putText(mRgba, "area" + area, new Point(xB,yB+100), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
 
-                                            //Imgproc.putText(mRgba, "B", new Point(xB + 20, yB), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
+                                            Imgproc.putText(mRgba, "B", new Point(xB -100, yB), Core.FONT_ITALIC, 1, new Scalar(0, 255, 255), 3);
                                         } else if (contadorMarca == 2) {
                                             marcaC = i;
                                             xC = (int) (mu.get_m10() / mu.get_m00());
@@ -274,10 +276,10 @@ public class ExamenActivity extends AppCompatActivity implements CameraBridgeVie
 //                                            Imgproc.putText(mRgba, "apadre" + areaPadre, new Point(xC,yC  +50), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
 //                                            Imgproc.putText(mRgba, "area" + area, new Point(xC,yC+100), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
 
-                                            //Imgproc.putText(mRgba, "C", new Point(xC + 20, yC), Core.FONT_ITALIC, 1, new Scalar(0, 0, 255), 3);
+                                            Imgproc.putText(mRgba, "C", new Point(xC -100, yC), Core.FONT_ITALIC, 1, new Scalar(0, 255, 255), 3);
                                         }
                                         contadorMarca++;
-                                        if (contadorMarca == 3) {
+                                        if (contadorMarca == 3 && marcaOrientacion == 1) {
                                             //Hay algun problema mejor no continuar
                                             //Hay mas de tres marcas , nope
                                             i = contours.size();
